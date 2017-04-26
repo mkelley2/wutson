@@ -1,6 +1,12 @@
 <?php
 function testform_menu() {
     $items = array();
+    $items['calendar_test'] = array(
+        'title' => 'Test Schedule',
+        'page callback' => 'test_calendar',
+        'access callback' => TRUE,
+        'type' => MENU_NORMAL_ITEM,
+    );
     $items['form_test'] = array(
         'title' => 'Test Form!',
         'page callback' => 'drupal_get_form',
@@ -9,8 +15,28 @@ function testform_menu() {
         'type' => MENU_NORMAL_ITEM,
     );
     $items['form_success_page'] = array(
-        'title' => 'Success',
+        'title' => 'Your TV Shows',
         'page callback' => 'form_success',
+        'access callback' => TRUE,
+        'type' => MENU_CALLBACK,
+    );
+    $items['api_form_success_page'] = array(
+        'title' => 'Api Results',
+        'page callback' => 'api_form_success',
+        'access callback' => TRUE,
+        'type' => MENU_CALLBACK,
+    );
+    $items['api_form_test'] = array(
+        'title' => 'Test API',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('api_form'),
+        'access callback' => TRUE,
+        'type' => MENU_NORMAL_ITEM,
+    );
+    $items['episodes/%'] = array(
+        'title' => 'Api Results',
+        'page callback' => 'episode_guide',
+        'page arguments' => array(1),
         'access callback' => TRUE,
         'type' => MENU_CALLBACK,
     );
@@ -47,16 +73,130 @@ function test_form() {
   return $form;
 }
 
+function api_form() {
+  $date = '2008-12-31 00:00:00';
+  $form['show_name_search'] = array(
+      '#title' => 'Show Name',
+      '#type' => 'textfield',
+      '#description' => t('What show are you looking for.'),
+  ); 
+
+  $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => 'Enter',
+  );
+
+  return $form;
+}
+
+function api_form_submit($form, &$form_state) {
+    $show_name = $form_state['values']['show_name_search'];
+    $_SESSION['api_form_values'] = $show_name;
+
+    $form_state['redirect'] = 'api_form_success_page';
+    
+}
+
 function test_form_submit($form, &$form_state) {
     $show_name = $form_state['values']['show_name'];
     $show_time = $form_state['values']['show_time'];
     $_SESSION['form_values'] = array($show_name, $show_time);
 
-
+    db_insert('show_info')
+    ->fields(array(
+      'show_name' => $form_state['values']['show_name'],
+      'show_time' => $form_state['values']['show_time'],       
+    ))->execute();
     $form_state['redirect'] = 'form_success_page';
+    
+}
+
+function api_form_success() {
+    $show_name = $_SESSION['api_form_values'];
+    $show_name_clean = str_replace(" ", "+", $show_name);
+    $response = file_get_contents('http://api.tvmaze.com/search/shows?q=' . $show_name_clean);
+    $answer = "<p>" . $show_name . "</p><ul>";
+    // 
+    $decode = json_decode($response, true);
+    foreach ($decode as $episode) {
+      $answer .= "<li><a href='/episodes/" . $episode['show']['id'] . "'>" . $episode['show']['name'] . "</a></li>";
+    }
+    return $answer .= "</ul>";
 }
 
 function form_success() {
-    $answer = $_SESSION['form_values'];
-    return "Show Name: " . $answer[0] . ", <br />Show Time: " . $answer[1];
+    $answer = "<ul>";
+    $result = db_query('SELECT * FROM show_info');
+      foreach ($result as $record) {
+        $answer .= "<li>Show Name: " . $record->show_name . " - Show Time: " . $record->show_time . "</li>";
+      }
+    return $answer .= "</ul>";
+}
+
+function episode_guide($arg){
+  $response = file_get_contents('http://api.tvmaze.com/shows/' . $arg . '/episodes');
+  $answer = "<ul>";
+  
+  $decode = json_decode($response, true);
+  $dates = array();
+  foreach ($decode as $episode) {
+    $answer .= "<li>" . $episode['name'] . ": " . $episode['airtime']  . " " . $episode['airdate'] . "</li>";
+    $episode_info = array("Show Id"=>$arg, "Episode Name"=>$episode['name'], "Episode Date"=> $episode['airdate']);
+    array_push($dates, $episode_info);
+  }
+  $_SESSION['calendar_info'] = $dates;
+  return $answer .= "</ul>";
+}
+
+function test_calendar(){
+    $dayminus1 = "<li>no shows</li>";
+    $dayminus2 = "<li>no shows</li>";
+    $dayminus3 = "<li>no shows</li>";
+    $day0 = "<li>no shows</li>";
+    $dayplus1 = "<li>no shows</li>";
+    $dayplus2 = "<li>no shows</li>";
+    $dayplus3 = "<li>no shows</li>";
+    
+    $modifier = 0;
+    foreach ($_SESSION['calendar_info'] as $episode) {
+      if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+$modifier, date("Y"))))){
+        $day0 = "<li>" . $episode['Episode Name'] . "</li>";
+      }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($modifier-1), date("Y"))))){
+        $dayminus1 = "<li>" . $episode['Episode Name'] . "</li>";
+      }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($modifier-2), date("Y"))))){
+        $dayminus2 = "<li>" . $episode['Episode Name'] . "</li>";
+      }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($modifier-3), date("Y"))))){
+        $dayminus3 = "<li>" . $episode['Episode Name'] . "</li>";
+      }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($modifier+1), date("Y"))))){
+        $dayplus1 = "<li>" . $episode['Episode Name'] . "</li>";
+      }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($modifier+2), date("Y"))))){
+        $dayplus2 = "<li>" . $episode['Episode Name'] . "</li>";
+      }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($modifier+3), date("Y"))))){
+        $dayplus3 = "<li>" . $episode['Episode Name'] . "</li>";
+      }
+    }
+    return 
+    "<div class='container'>" .
+      "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($modifier-3), date("Y")))) . 
+      "</strong><div><ul>" . $dayminus3 . "</ul></div>" .
+      "</div>" . 
+      "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($modifier-2), date("Y")))) . 
+      "</strong><div><ul>" . $dayminus2 . "</ul></div>" .
+      "</div>" . 
+      "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($modifier-1), date("Y")))) . 
+      "</strong><div><ul>" . $dayminus1 . "</ul></div>" .
+      "</div>" . 
+      "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+$modifier, date("Y")))) . 
+      "</strong><div><ul>" . $day0 . "</ul></div>" .
+      "</div>" .
+      "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($modifier+1), date("Y")))) . 
+      "</strong><div><ul>" . $dayplus1 . "</ul></div>" .
+      "</div>" .
+      "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($modifier+2), date("Y")))) . 
+      "</strong><div><ul>" . $dayplus2 . "</ul></div>" .
+      "</div>" .
+      "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($modifier+3), date("Y")))) . 
+      "</strong><div><ul>" . $dayplus2 . "</ul></div>" .
+      "</div>" .
+    "</div>";
 }
