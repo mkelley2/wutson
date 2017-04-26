@@ -1,0 +1,62 @@
+<?php
+function testform_menu() {
+    $items = array();
+    $items['form_test'] = array(
+        'title' => 'Test Form!',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('test_form'),
+        'access callback' => TRUE,
+        'type' => MENU_NORMAL_ITEM,
+    );
+    $items['form_success_page'] = array(
+        'title' => 'Success',
+        'page callback' => 'form_success',
+        'access callback' => TRUE,
+        'type' => MENU_CALLBACK,
+    );
+    return $items;
+}
+
+function test_form() {
+  $date = '2008-12-31 00:00:00';
+  $form['show_name'] = array(
+      '#title' => 'Show Name',
+      '#type' => 'textfield',
+      '#description' => t('Please Your Show Name.'),
+  );
+
+  $format = 'Y-m-d H:i';
+ 
+  $form['show_time'] = array(
+     '#type' => 'date_select', // types 'date_text' and 'date_timezone' are also supported. See .inc file.
+     '#title' => t('Select a date'),
+     '#default_value' => $date, 
+     '#date_format' => $format,
+     '#date_label_position' => 'within', // See other available attributes and what they do in date_api_elements.inc
+     '#date_timezone' => 'America/Chicago', // Optional, if your date has a timezone other than the site timezone.
+     '#date_increment' => 15, // Optional, used by the date_select and date_popup elements to increment minutes and seconds.
+     '#date_year_range' => '-3:+3', // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+     '#description' => t('Please Your Show Time.'),
+  );   
+
+  $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => 'Enter',
+  );
+
+  return $form;
+}
+
+function test_form_submit($form, &$form_state) {
+    $show_name = $form_state['values']['show_name'];
+    $show_time = $form_state['values']['show_time'];
+    $_SESSION['form_values'] = array($show_name, $show_time);
+
+
+    $form_state['redirect'] = 'form_success_page';
+}
+
+function form_success() {
+    $answer = $_SESSION['form_values'];
+    return "Show Name: " . $answer[0] . ", <br />Show Time: " . $answer[1];
+}

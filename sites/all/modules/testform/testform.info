@@ -1,0 +1,5 @@
+name = Test Form
+description = Test Form for user input
+package = Forms
+core = 7.x
+files[] = testform.module
