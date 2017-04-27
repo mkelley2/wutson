@@ -1,10 +1,9 @@
 <?php
 function testform_menu() {
     $items = array();
-    $items['calendar_test/%'] = array(
+    $items['calendar_test'] = array(
         'title' => 'Test Schedule',
         'page callback' => 'test_calendar',
-        'page arguments' => array(1),
         'access callback' => TRUE,
         'type' => MENU_CALLBACK,
     );
@@ -136,72 +135,25 @@ function form_success() {
 
 function episode_guide($arg){
   $response = file_get_contents('http://api.tvmaze.com/shows/' . $arg . '/episodes');
+  $show = file_get_contents('http://api.tvmaze.com/shows/' . $arg);
   $answer = "<ul>";
-  
   $decode = json_decode($response, true);
+  $show_data = json_decode($show, true);
+  $show_name = $show_data['name'];
+  
   $dates = array();
   foreach ($decode as $episode) {
     $answer .= "<li>" . $episode['name'] . ": " . $episode['airtime']  . " " . $episode['airdate'] . "</li>";
-    $episode_info = array("Show Id"=>$arg, "Episode Name"=>$episode['name'], "Episode Date"=> $episode['airdate']);
+    $episode_info = array("Show Name"=> $show_name, "Show Id"=>$arg, "Episode Name"=>$episode['name'], "Episode Date"=> $episode['airdate']);
     array_push($dates, $episode_info);
   }
   $_SESSION['calendar_info'] = $dates;
   return $answer .= "</ul>";
 }
 
-function test_calendar($arg){
-  $testvar = $_SESSION['calendar_info'];
-  drupal_add_js(array('testform' => array('testvar' => $testvar)), array('type' => 'setting'));
-  drupal_add_js(drupal_get_path('module', 'testform') . '/js/testform.js');
-    // $dayminus1 = "<li>no shows</li>";
-    // $dayminus2 = "<li>no shows</li>";
-    // $dayminus3 = "<li>no shows</li>";
-    // $day0 = "<li>no shows</li>";
-    // $dayplus1 = "<li>no shows</li>";
-    // $dayplus2 = "<li>no shows</li>";
-    // $dayplus3 = "<li>no shows</li>";
-    // $arg = floatval($arg);
-    // foreach ($_SESSION['calendar_info'] as $episode) {
-    //   if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+$arg, date("Y"))))){
-    //     $day0 = "<li>" . $episode['Episode Name'] . "</li>";
-    //   }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($arg-1), date("Y"))))){
-    //     $dayminus1 = "<li>" . $episode['Episode Name'] . "</li>";
-    //   }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($arg-2), date("Y"))))){
-    //     $dayminus2 = "<li>" . $episode['Episode Name'] . "</li>";
-    //   }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($arg-3), date("Y"))))){
-    //     $dayminus3 = "<li>" . $episode['Episode Name'] . "</li>";
-    //   }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($arg+1), date("Y"))))){
-    //     $dayplus1 = "<li>" . $episode['Episode Name'] . "</li>";
-    //   }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($arg+2), date("Y"))))){
-    //     $dayplus2 = "<li>" . $episode['Episode Name'] . "</li>";
-    //   }else if($episode['Episode Date'] == date('Y-m-d', (mktime(0,0,0,date("m")  , date("d")+($arg+3), date("Y"))))){
-    //     $dayplus3 = "<li>" . $episode['Episode Name'] . "</li>";
-    //   }
-    // }
-    // return 
-    // "<div class='container'>" .
-    //   "<div class='row'><a href='/calendar_test/" . ($arg - 7) . "'><button>Previous Week</button></a><a href='/calendar_test/0'><button>Today</button></a><a href='/calendar_test/" . ($arg + 7) . "'><button>Next Week</button></a></div>" . 
-    //   "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($arg-3), date("Y")))) . 
-    //   "</strong><div><ul>" . $dayminus3 . "</ul></div>" .
-    //   "</div>" . 
-    //   "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($arg-2), date("Y")))) . 
-    //   "</strong><div><ul>" . $dayminus2 . "</ul></div>" .
-    //   "</div>" . 
-    //   "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($arg-1), date("Y")))) . 
-    //   "</strong><div><ul>" . $dayminus1 . "</ul></div>" .
-    //   "</div>" . 
-    //   "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+$arg, date("Y")))) . 
-    //   "</strong><div><ul>" . $day0 . "</ul></div>" .
-    //   "</div>" .
-    //   "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($arg+1), date("Y")))) . 
-    //   "</strong><div><ul>" . $dayplus1 . "</ul></div>" .
-    //   "</div>" .
-    //   "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($arg+2), date("Y")))) . 
-    //   "</strong><div><ul>" . $dayplus2 . "</ul></div>" .
-    //   "</div>" .
-    //   "<div class='row'><strong>" . date('l \t\h\e jS', (mktime(0,0,0, date("m")  , date("d")+($arg+3), date("Y")))) . 
-    //   "</strong><div><ul>" . $dayplus2 . "</ul></div>" .
-    //   "</div>" .
-    // "</div>";
+function test_calendar(){
+    $testvar = $_SESSION['calendar_info'];
+    drupal_add_js(array('testform' => array('testvar' => $testvar)), array('type' => 'setting'));
+    drupal_add_js(drupal_get_path('module', 'testform') . '/js/testform.js');
     return "<div><button class='prev_btn'>Previous Week</button><button class='today_btn'>Today</button><button class='next_btn'>Next Week</button><div class='container calendar_holder'></div></div>";
 }
